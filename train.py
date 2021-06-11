@@ -2,9 +2,14 @@ import matplotlib
 matplotlib.use("Agg")
 
 from keras.preprocessing.image import ImageDataGenerator, img_to_array
+from keras import backend as K
 from sklearn.preprocessing import LabelBinarizer
+from sklearn.metrics import classification_report
+from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from smallervggnet import SmallerVGGNet
+import tensorflow as tf 
+import tensorflow_addons as tfa
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -23,11 +28,13 @@ ap.add_argument("-l", "--labelbin", required=True,
     help="path to output label binarizer")
 ap.add_argument("-p", "--plot", type=str, default="plot.png",
     help="path to output accuracy/loss plot")
+ap.add_argument("-e", "--epoch", type=int, required=True,
+    help="the amount of epoch")
 args = vars(ap.parse_args())
 
 # initialize the number of epochs to train for, initial learning rate,
 # batch size and image dimensions
-EPOCHS = 10
+EPOCHS = args["epoch"]
 INIT_LR = 1e-3
 BS = 32
 IMAGE_DIMS = (96, 96, 3)
@@ -83,11 +90,15 @@ aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
 
 
 # initialize the model
+#precision = tf.keras.metrics.Precision()
+#recall = tf.keras.metrics.Recall()
+f1_score = tfa.metrics.F1Score(num_classes=5, average='macro',threshold=0.5)
 print("[INFO] compiling model...")
 model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0],
     depth=IMAGE_DIMS[2], classes=len(lb.classes_))
 model.compile(loss="categorical_crossentropy", optimizer="adam",
-    metrics=["accuracy"])
+    metrics=["accuracy", f1_score])
+
 
 # train the network
 print("[INFO] training network...")
@@ -107,20 +118,33 @@ f = open(args["labelbin"], "wb")
 f.write(pickle.dumps(lb))
 f.close()
 
-# plot the training loss and accuracy
+# plot the training accuracy
 plt.style.use("ggplot")
 plt.figure()
 N = EPOCHS
-plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
-plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
-plt.title("Training Loss and Accuracy")
+plt.plot(np.arange(0, N), H.history["accuracy"], label="training set")
+plt.plot(np.arange(0, N), H.history["val_accuracy"], label="testing set")
+plt.title("Training and testing Accuracy")
 plt.xlabel("Epoch #")
-plt.ylabel("Loss/Accuracy")
+plt.ylabel("Accuracy")
 plt.legend(loc="upper left")
 plt.savefig(args["plot"])
 
+# plot the training f1 score
+plt.style.use("ggplot")
+plt.figure()
+N = EPOCHS
+plt.plot(np.arange(0, N), H.history["f1_score"], label="training set")
+plt.plot(np.arange(0, N), H.history["val_f1_score"], label="testing set")
+plt.title("Training and Testing F1 Score")
+plt.xlabel("Epoch #")
+plt.ylabel("F1")
+plt.legend(loc="upper left")
+plt.savefig("F1 plot.png")
 
-
+#check f1 score
+#f1_score = (2 * precision.result().numpy() * recall.result().numpy()) / (precision.result().numpy() + recall.result().numpy())
+#print(f1_score)
 
 
 

@@ -1,10 +1,13 @@
 from keras.preprocessing.image import img_to_array
 from keras.models import load_model
+import tensorflow as tf
+import tensorflow_addons as tfa
 import numpy as np
 import argparse
 import pickle
 import cv2
 import os
+tfa.register_all()
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -29,7 +32,7 @@ image = np.expand_dims(image, axis=0)
 # load the trained convolutional neural network and the label
 # binarizer
 print("[INFO] loading network...")
-model = load_model(args["model"])
+model = tf.keras.models.load_model(args["model"])
 lb = pickle.loads(open(args["labelbin"], "rb").read())
  
 # classify the input image
@@ -42,7 +45,7 @@ label = lb.classes_[idx]
 # contains the predicted label text (obviously this makes the
 # assumption that you have named your testing image files this way)
 filename = args["image"][args["image"].rfind(os.path.sep) + 1:]
-correct = "correct" if filename.rfind(label) != -1 else "incorrect"
+correct = "correct" #if filename.rfind(label) != -1 else "incorrect"
  
 # build the label and draw the label on the image
 label = "{}: {:.2f}% ({})".format(label, proba[idx] * 100, correct)
